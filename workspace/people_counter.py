@@ -86,6 +86,7 @@ def main(prototxt, model, input_video, output_video, confidence, skip_frames):
             cv2.putText(image, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[class_idx], 2)
             bboxes.append( [startX, startY, endX, endY] )
 
+        print('#bboxes {}'.format(len(bboxes)))
         objects = ct.update(bboxes)
         for objectID, centroid in objects.items():
             text = 'ID {}'.format(objectID)
