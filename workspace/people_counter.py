@@ -4,14 +4,15 @@ import time
 import dlib
 import cv2
 
+from src.centroid_tracker import CentroidTracker
 from src.trackable_object import TrackableObject
 from src.helper import imresize
 
 HEIGHT = 480
 
 CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
-    "Garrafa", "bus", "car", "cat", "chair", "cow", "diningtable",
-    "dog", "horse", "motorbike", "pessoa", "pottedplant", "sheep",
+            "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+    "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
     "sofa", "train", "tvmonitor"]
 
 COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
@@ -57,8 +58,12 @@ def main(prototxt, model, input_video, output_video, confidence, skip_frames):
     print("[INFO] loading model...")
     net = cv2.dnn.readNetFromCaffe(prototxt, model)
 
-    # video = cv2.VideoCapture(input_video)
-    video = cv2.VideoCapture('/dev/video0')
+    ct = CentroidTracker()
+
+    video = cv2.VideoCapture(input_video)
+    # video = cv2.VideoCapture('/home/condados/workarea/people-couting/data/input_sample/05.mp4')
+    # video = cv2.VideoCapture('/dev/video0')
+    # time.sleep(2.0)
     while True:
         res, frame = video.read()
 
@@ -70,16 +75,33 @@ def main(prototxt, model, input_video, output_video, confidence, skip_frames):
 
         # draw detections
         image = frame
+        bboxes = []
         for i in range(len(detections)):
             startX, startY, endX, endY, class_idx = detections[i]
             label = CLASSES[class_idx]
+            if label != 'person':
+                continue
             cv2.rectangle(image, (startX, startY), (endX, endY), COLORS[class_idx], 2)
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(image, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[class_idx], 2)
+            bboxes.append( [startX, startY, endX, endY] )
+
+        objects = ct.update(bboxes)
+        for objectID, centroid in objects.items():
+            text = 'ID {}'.format(objectID)
+            print('Centroid {}'.format(centroid))
+            cv2.putText(image,
+                        text,
+                        (centroid[0] - 10, centroid[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 255, 0),
+                        2)
+            cv2.circle(image, (centroid[0], centroid[1]), 4, (0, 255, 0,), -1)
 
         cv2.imshow('video', frame)
-        k = cv2.waitKey(1)
-        if k & 0xFF == 27:
+        k = cv2.waitKey(1) & 0xFF
+        if k == 27 or k == ord('q'):
             break
 
 
